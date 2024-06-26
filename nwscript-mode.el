@@ -36,11 +36,13 @@
   '("==" "!=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>="))
 
 (defun nwscript-keywords ()
-  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default"))
+  '("for" "while" "do" "if" "else" "struct" "include" "return" "const" "switch" "case" "default"))
 
 (defun nwscript-font-lock-keywords ()
   (list
-   `("\\b\\(\#include\\)\\b" . font-lock-keyword-face)
+   ;; `("\\b\\(\#include\\)\\b" . font-lock-keyword-face)
+   ;; struct members highlighting
+   `("\\(\\b[A-Za-z]+[A-Za-z0-9_]*\\)\\.\\([A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
    ;; special struct highlighting
    `("\\(\\bstruct\\b\\) \\(\\b[A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
    ;; constants
@@ -53,7 +55,7 @@
    `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*\\)\\((\\)" . (2 font-lock-function-name-face))
    ;; function calls
    ;; TODO: figure out how to find function calls
-   ;; `("\\b\\([A-Za-z]+[A-Za-z_0-9]*\\b\\)\\((\\)" . (0 font-lock-function-call-face))
+   ;; `("\\b\\([A-Z]+[A-Za-z_0-9]+\\)\\((\\)" . (0 font-lock-function-call-face))
    ;; `(,(regexp-opt (nwscript-operators) 'symbols) . font-lock-negation-char-face)
    ))
 
