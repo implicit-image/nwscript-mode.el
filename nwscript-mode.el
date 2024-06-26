@@ -26,6 +26,9 @@
 	(modify-syntax-entry ?\n "> b" table)
     table))
 
+;; mode hook
+(defvar nwscript-mode-hook nil "Hook for function `nwscript-mode-hook'.")
+
 (defun nwscript-types ()
   '("int" "float" "object" "itemproperty" "effect" "talent" "location" "command" "action" "cassowary" "event" "json" "sqlquery" "string" "vector" "void"))
 
@@ -100,6 +103,7 @@
   :syntax-table nwscript-mode-syntax-table
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
-  (setq-local comment-start "// "))
+  (setq-local comment-start "// ")
+  (run-hooks 'nwscript-mode-hook))
 
 (provide 'nwscript-mode)
