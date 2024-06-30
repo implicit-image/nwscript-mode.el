@@ -29,21 +29,25 @@
 ;; mode hook
 (defvar nwscript-mode-hook nil "Hook for function `nwscript-mode-hook'.")
 
+(defvar nwscript-mode-indent-level 4)
+
 (defun nwscript-types ()
   '("int" "float" "object" "itemproperty" "effect" "talent" "location" "command" "action" "cassowary" "event" "json" "sqlquery" "string" "vector" "void"))
 
 (defun nwscript-operators ()
-  '("==" "!=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>="))
+  '("=" "==" "!\=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>="))
 
 (defun nwscript-keywords ()
-  '("for" "while" "do" "if" "else" "struct" "include" "return" "const" "switch" "case" "default"))
+  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default"))
 
 (defun nwscript-font-lock-keywords ()
+  "Font Lock keywords for nwscript-mode."
   (list
-   ;; `("\\b\\(\#include\\)\\b" . font-lock-keyword-face)
+   ;; directives
+   `("\\(#define\\|#include\\b\\)" . font-lock-keyword-face)
    ;; struct members highlighting
    `("\\(\\b[A-Za-z]+[A-Za-z0-9_]*\\)\\.\\([A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
-   ;; special struct highlighting
+   ;; struct definition highlighting
    `("\\(\\bstruct\\b\\) \\(\\b[A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
    ;; constants
    `("\\b[A-Z][A-Z_0-9]+\\b" . font-lock-constant-face)
@@ -52,11 +56,7 @@
    ;; types
    `(,(regexp-opt (nwscript-types) 'symbols) . font-lock-type-face)
    ;; function declarations
-   `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*\\)\\((\\)" . (2 font-lock-function-name-face))
-   ;; function calls
-   ;; TODO: figure out how to find function calls
-   ;; `("\\b\\([A-Z]+[A-Za-z_0-9]+\\)\\((\\)" . (0 font-lock-function-call-face))
-   ;; `(,(regexp-opt (nwscript-operators) 'symbols) . font-lock-negation-char-face)
+   `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z_]+[A-Za-z_0-9]*\\)\\((\\)" . (2 font-lock-function-name-face))
    ))
 
 ;;; TODO: try to replace nwscript--space-prefix-len with current-indentation
@@ -77,18 +77,28 @@
 (defun nwscript--desired-indentation ()
   (let ((cur-line (string-trim-right (thing-at-point 'line t)))
         (prev-line (string-trim-right (nwscript--previous-non-empty-line)))
-        (indent-len 4))
+        (indent-len nwscript-mode-indent-level))
     (cond
      ((and (string-suffix-p "{" prev-line)
            (string-prefix-p "}" (string-trim-left cur-line)))
       (nwscript--space-prefix-len prev-line))
-     ((string-suffix-p "{" prev-line)
+     ;; function declaration params
+     ((string-suffix-p "," prev-line)
+      (- (length prev-line) (length (string-trim-left prev-line "\\(.+(\\)"))))
+     ((or (string-suffix-p "{" prev-line)
+          (string-suffix-p "(" prev-line)
+          ;; one line while
+          (and (not (string-suffix-p ";" prev-line))
+               (or
+                (string-prefix-p "while" (string-trim-left prev-line))
+                (string-prefix-p "if" (string-trim-left prev-line))
+                (string-prefix-p "for" (string-trim-left prev-line))
+                )))
       (+ (nwscript--space-prefix-len prev-line) indent-len))
      ((string-prefix-p "}" (string-trim-left cur-line))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
      (t (nwscript--space-prefix-len prev-line)))))
 
-;;; TODO: customizable indentation (amount of spaces, tabs, etc)
 (defun nwscript-indent-line ()
   (interactive)
   (when (not (bobp))
