@@ -38,7 +38,7 @@
   '("=" "==" "!\=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>="))
 
 (defun nwscript-keywords ()
-  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default"))
+  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default" "break"))
 
 (defun nwscript-font-lock-keywords ()
   "Font Lock keywords for nwscript-mode."
