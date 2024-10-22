@@ -111,11 +111,12 @@
       (forward-char n))))
 
 (define-derived-mode nwscript-mode prog-mode "NWScript"
-  "Simple major mode for editing C files."
+  "Simple major mode for editing Neverwinter Script files."
   :syntax-table nwscript-mode-syntax-table
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
   (setq-local comment-start "// ")
+  (add-to-list 'auto-mode-alist '("\\.nss\\'" . nwscript-mode))
   (run-hooks 'nwscript-mode-hook))
 
 (provide 'nwscript-mode)
