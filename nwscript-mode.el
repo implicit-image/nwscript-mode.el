@@ -148,12 +148,10 @@
     (current-indentation)))
 
 
-
-
 (defun nwscript--desired-indentation ()
   (let* ((cur-line (string-trim-right (thing-at-point 'line t)))
          (prev-line (string-trim-right (nwscript--previous-non-empty-line)))
-         (indent-len 4)
+         (indent-len nwscript-mode-indent-level)
          (prev-indent (nwscript--indentation-of-previous-non-empty-line)))
     (cond
      ((string-suffix-p "," prev-line)
