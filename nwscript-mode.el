@@ -1,8 +1,8 @@
 ;;; nwscript-mode.el --- major mode for editing Neverwinter Script -*- lexical-binding: t -*-
 ;; Author: Błażej Niewiadomski - github.com/implicit-image
 ;; Maintainer: Błażej Niewiadomski
-;; Version: version
-;; Package-Requires: (dependencies)
+;; Version: 0.1
+;; Package-Requires: ()
 ;; Homepage: https://github.com/implicit-image/nwscript-mode.el
 ;; Keywords: nwscript
 
@@ -63,38 +63,9 @@
   "\\b[A-Z][A-Z_0-9]+\\b"
   "Regex to parse constants.")
 
-;; (defvar nwscript--keyword-regex
-;;   (regex-opt (nwscript-keywords) 'symbols)
-;;   "Regex to parse keywords.")
-
-;; (defvar nwscript--type-regex
-;;   (regexp-opt (nwscript-types) 'symbols)
-;;   "Regex to parse types.")
-
 (defvar nwscript--function-regex
   "\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z_]+[A-Za-z_0-9]*\\)\\((\\)"
   "Regex to parse function declaracions.")
-
-
-;; (defun nwscript-font-lock-keywords ()
-;;   "Font Lock keywords for nwscript-mode."
-;;   (list
-;;    ;; directives
-;;    `("\\(#define\\|#include\\b\\)" . font-lock-keyword-face)
-;;    ;; struct members highlighting
-;;    `("\\(\\b[A-Za-z]+[A-Za-z0-9_]*\\)\\.\\([A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-property-name-face))
-;;    ;; struct definition highlighting
-;;    `("\\(\\bstruct\\b\\) \\(\\b[A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
-;;    ;; constants
-;;    `("\\b[A-Z][A-Z_0-9]+\\b" . font-lock-constant-face)
-;;    ;; keywords
-;;    `(,(regexp-opt (nwscript-keywords) 'symbols) . font-lock-keyword-face)
-;;    ;; types
-;;    `(,(regexp-opt (nwscript-types) 'symbols) . font-lock-type-face)
-;;    ;; function declarations
-;;    `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z_]+[A-Za-z_0-9]*\\)\\((\\)" . (2 font-lock-function-name-face))
-;;    ))
-
 
 (defun nwscript-font-lock-keywords ()
   "Font Lock keywords for nwscript-mode."
