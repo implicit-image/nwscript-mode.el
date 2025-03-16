@@ -98,6 +98,21 @@
 (define-derived-mode nwscript-mode prog-mode "NWScript"
   "Simple major mode for editing C files."
   :syntax-table nwscript-mode-syntax-table
+  ;; imenu integration
+  (setq-local imenu-max-item-length 150
+              imenu-flatten t
+              imenu-generic-expression
+              `(("Function declarations" "\\b\\(\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*(.*)\\)\\);" 1)
+                ("Function definitions" "\\b\\(\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*(.*)\\)\\)[^;]" 1)
+                ("Constants" "^\\(const \\(int\\|float\\|string\\) [A-Z_]+\\) =.*;" 1)
+                ("Structs" "^struct \\([A-Za-z0-9]+\\)" 2)))
+  ;; consult imenu config
+  (add-to-list 'consult-imenu-config
+               '(nwscript-mode :toplevel "Functions"
+                               :types ((?f "Function declarations" font-lock-function-name-face)
+                                       (?d "Function definitions" font-lock-function-name-face)
+                                       (?s "Structs" font-lock-type-face)
+                                       (?c "Constants" font-lock-constant-face))))
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
   (setq-local comment-start "// "))
