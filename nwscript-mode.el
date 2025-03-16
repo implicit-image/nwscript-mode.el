@@ -21,9 +21,9 @@
 (defvar nwscript-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; C/C++ style comments
-	(modify-syntax-entry ?/ ". 124b" table)
-	(modify-syntax-entry ?* ". 23" table)
-	(modify-syntax-entry ?\n "> b" table)
+    (modify-syntax-entry ?/ ". 124b" table)
+    (modify-syntax-entry ?* ". 23" table)
+    (modify-syntax-entry ?\n "> b" table)
     table))
 
 (defun nwscript-types ()
