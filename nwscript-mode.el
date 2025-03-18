@@ -37,7 +37,7 @@
 
 (defun nwscript-font-lock-keywords ()
   (list
-   `("\\b\\(\#include\\)\\b" . font-lock-keyword-face)
+   `("\\(\#include\\|\#define\\)" . font-lock-keyword-face)
    ;; special struct highlighting
    `("\\(\\bstruct\\b\\) \\(\\b[A-Za-z]+[A-Za-z0-9_]*\\b\\)" . (2 font-lock-type-face))
    ;; constants
@@ -47,7 +47,7 @@
    ;; types
    `(,(regexp-opt (nwscript-types) 'symbols) . font-lock-type-face)
    ;; function declarations
-   `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*\\)\\((\\)" . (2 font-lock-function-name-face))
+   `("\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)" . (2 font-lock-function-name-face))
    ;; function calls
    ;; TODO: figure out how to find function calls
    ;; `("\\b\\([A-Za-z]+[A-Za-z_0-9]*\\b\\)\\((\\)" . (0 font-lock-function-call-face))
@@ -102,17 +102,19 @@
   (setq-local imenu-max-item-length 150
               imenu-flatten t
               imenu-generic-expression
-              `(("Function declarations" "\\b\\(\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*(.*)\\)\\);" 1)
-                ("Function definitions" "\\b\\(\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) \\([A-Za-z]+[A-Za-z_0-9]*(.*)\\)\\)[^;]" 1)
-                ("Constants" "\\b\\(const +\\(int\\|float\\|string\\) +[A-Z0-9_]+\\) =.*;" 1)
-                ("Structs" "^struct \\([A-Za-z0-9]+\\)" 2)))
+              `(("Function declarations" "\\b\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\);" 1)
+                ("Function definitions" "\\b\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)[^;]" 1)
+                ("Constants" "\\b\\(const[ \t]+\\(int\\|float\\|string\\)[ \t]+[A-Z0-9_]+\\)[ \t]+=.*;" 1)
+                ("Structs" "\\b\\(^struct[ \t]+\\([A-Za-z0-9_]+$\\)\\)" 1)))
   ;; consult imenu config
-  (add-to-list 'consult-imenu-config
-               '(nwscript-mode :toplevel "Functions"
-                               :types ((?f "Function declarations" font-lock-function-name-face)
-                                       (?d "Function definitions" font-lock-function-name-face)
-                                       (?s "Structs" font-lock-type-face)
-                                       (?c "Constants" font-lock-constant-face))))
+  (eval-after-load 'consult-imenu
+    (add-to-list 'consult-imenu-config
+                 '(nwscript-mode :toplevel "Functions"
+                                 :types ((?f "Function declarations" font-lock-function-name-face)
+                                         (?d "Function definitions" font-lock-function-name-face)
+                                         (?s "Structs" font-lock-type-face)
+                                         (?c "Constants" font-lock-constant-face)))))
+
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
   (setq-local comment-start "// "))
