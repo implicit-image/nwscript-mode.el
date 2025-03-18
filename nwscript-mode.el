@@ -108,12 +108,12 @@
                 ("Structs" "\\b\\(^struct[ \t]+\\([A-Za-z0-9_]+$\\)\\)" 1)))
   ;; consult imenu config
   (eval-after-load 'consult-imenu
-    (add-to-list 'consult-imenu-config
-                 '(nwscript-mode :toplevel "Functions"
-                                 :types ((?f "Function declarations" font-lock-function-name-face)
-                                         (?d "Function definitions" font-lock-function-name-face)
-                                         (?s "Structs" font-lock-type-face)
-                                         (?c "Constants" font-lock-constant-face)))))
+    '(add-to-list 'consult-imenu-config
+                  '(nwscript-mode :toplevel "Functions"
+                                  :types ((?f "Function declarations" font-lock-function-name-face)
+                                          (?d "Function definitions" font-lock-function-name-face)
+                                          (?s "Structs" font-lock-type-face)
+                                          (?c "Constants" font-lock-constant-face)))))
 
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
