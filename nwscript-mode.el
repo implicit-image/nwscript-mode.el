@@ -36,7 +36,7 @@
   '("==" "!=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>="))
 
 (defun nwscript-keywords ()
-  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default"))
+  '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default" "break"))
 
 (defun nwscript-font-lock-keywords ()
   (list
@@ -80,13 +80,15 @@
      ((and (string-suffix-p "{" prev-line)
            (string-prefix-p "}" (string-trim-left cur-line)))
       (nwscript--space-prefix-len prev-line))
+     
      ((string-suffix-p "{" prev-line)
       (+ (nwscript--space-prefix-len prev-line) indent-len))
+
      ((string-prefix-p "}" (string-trim-left cur-line))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
+     
      (t (nwscript--space-prefix-len prev-line)))))
 
-;;; TODO: customizable indentation (amount of spaces, tabs, etc)
 (defun nwscript-indent-line ()
   (interactive)
   (when (not (bobp))
