@@ -26,6 +26,9 @@
     (modify-syntax-entry ?\n "> b" table)
     table))
 
+(defvar nwscript-indent-offset 4
+  "Indent offset for `nwscript-mode'.")
+
 (defun nwscript-types ()
   '("int" "float" "object" "itemproperty" "effect" "talent" "location" "command" "action" "cassowary" "event" "json" "sqlquery" "string" "vector" "void"))
 
@@ -72,7 +75,7 @@
 (defun nwscript--desired-indentation ()
   (let ((cur-line (string-trim-right (thing-at-point 'line t)))
         (prev-line (string-trim-right (nwscript--previous-non-empty-line)))
-        (indent-len 4))
+        (indent-len nwscript-indent-offset))
     (cond
      ((and (string-suffix-p "{" prev-line)
            (string-prefix-p "}" (string-trim-left cur-line)))
