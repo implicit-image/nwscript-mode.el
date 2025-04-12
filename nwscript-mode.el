@@ -80,13 +80,13 @@
      ((and (string-suffix-p "{" prev-line)
            (string-prefix-p "}" (string-trim-left cur-line)))
       (nwscript--space-prefix-len prev-line))
-     
+
      ((string-suffix-p "{" prev-line)
       (+ (nwscript--space-prefix-len prev-line) indent-len))
 
      ((string-prefix-p "}" (string-trim-left cur-line))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
-     
+
      (t (nwscript--space-prefix-len prev-line)))))
 
 (defun nwscript-indent-line ()
@@ -119,6 +119,7 @@
                                           (?d "Function definitions" font-lock-function-name-face)
                                           (?s "Structs" font-lock-type-face)
                                           (?c "Constants" font-lock-constant-face)))))
+  (setq-local outline-regexp "//.+$")
 
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords))
   (setq-local indent-line-function 'nwscript-indent-line)
