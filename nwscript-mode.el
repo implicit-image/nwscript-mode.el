@@ -229,7 +229,7 @@ the directory."
       (forward-char n))))
 
 (define-derived-mode nwscript-mode prog-mode "NWScript"
-  "Simple major mode for editing C files."
+  "Simple major mode for editing Neverwinter Script files."
   :syntax-table nwscript-mode-syntax-table
   ;; local variables
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords)
