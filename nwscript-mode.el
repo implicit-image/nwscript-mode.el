@@ -172,7 +172,7 @@ the directory."
      (length (string-trim-left line))))
 
 (defun nwscript--previous-non-empty-line (pos)
-  "Get first previous line that is not empty."
+  "Get first previous line that is not empty starting at POS."
   (save-mark-and-excursion
     (forward-line (- pos))
     (while (and (not (bobp))
@@ -182,25 +182,49 @@ the directory."
       (forward-line -1))
     (thing-at-point 'line t)))
 
+(defun nwscript--strip-comments (line)
+  "Strip comments from LINE if it is not just a comment line."
+  (let ((substr (substring line 0 (string-match " */[/\*].*$" line))))
+    (if (not (string-empty-p substr))
+        substr
+      line)))
+
 (defun nwscript--desired-indentation ()
-  (let ((cur-line (string-trim-right (thing-at-point 'line t)))
-        (prev-line (string-trim-right (nwscript--previous-non-empty-line 1)))
+  "."
+  (let ((cur-line (string-trim-right (nwscript--strip-comments
+                                      (thing-at-point 'line t))))
+        (prev-line (string-trim-right (nwscript--strip-comments
+                                       (nwscript--previous-non-empty-line 1))))
         (sec-last-line (string-trim-right (nwscript--previous-non-empty-line 2)))
         (indent-len nwscript-indent-offset))
     (cond
      ;;;; switch statement handling
+
+     ;; handle curly bracket at the end of switch statement
+     ((and (string-suffix-p "}" cur-line)
+           (not (save-mark-and-excursion
+                  (search-backward "{"
+                                   (save-mark-and-excursion
+                                     (search-backward "default:" nil t))
+                                   t))))
+      (max (- (nwscript--space-prefix-len prev-line)
+              (* 2 indent-len))
+           0))
+
      ((or (string-suffix-p "break;" prev-line)
           (string-prefix-p "return" (string-trim-left prev-line)))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
 
      ((and (string-suffix-p ":" prev-line)
-           (not (string-match-p "case.*" (string-trim-left cur-line))))
+           (not (or (string-prefix-p "case " (string-trim-left cur-line))
+                    (string-prefix-p "default:" (string-trim-left cur-line)))))
       (if (string-prefix-p "{" (string-trim-left cur-line))
           (nwscript--space-prefix-len prev-line)
         (+ (nwscript--space-prefix-len prev-line) indent-len)))
 
-     ((and (string-prefix-p "case" (string-trim-left cur-line))
-           (not (string-prefix-p "case" (string-trim-left prev-line)))
+     ((and (string-prefix-p "case " (string-trim-left cur-line))
+           (not (or (string-prefix-p "case " (string-trim-left prev-line))
+                    (string-prefix-p "default:" (string-trim-left prev-line))))
            (string-suffix-p ";" prev-line))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
 
