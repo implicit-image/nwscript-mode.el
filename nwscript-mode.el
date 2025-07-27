@@ -189,30 +189,134 @@ the directory."
         substr
       line)))
 
+(defun nwscript--one-after-another-backward (first second)
+  "FIRST SECOND."
+  (save-mark-and-excursion
+    (search-backward first
+                     (save-mark-and-excursion
+                       (search-backward second nil t 1))
+                     t 1)))
+
+(defun nwscript--one-after-another-backward-regexp (first second)
+  "FIRST SECOND."
+  (save-mark-and-excursion
+    (search-backward-regexp first
+                            (save-mark-and-excursion
+                              (search-backward-regexp second nil t 1))
+                            t 1)))
+
+(defun nwscript--indent-at-last-matching-paren (start-pos close-paren)
+  "START-POS CLOSE-PAREN."
+  (save-mark-and-excursion
+    (goto-char start-pos)
+    (search-backward close-paren nil t)
+    (forward-char 1)
+    (backward-sexp)
+    (nwscript--space-prefix-len (thing-at-point 'line t))))
+
+(defun nwscript--match-line-at-last-matching-paren (regexp start-pos close-paren)
+  (save-mark-and-excursion
+    (goto-char start-pos)
+    (search-backward close-paren nil t)
+    (forward-char 1)
+    (backward-sexp)
+    (string-match-p regexp
+                    (string-trim-left
+                     (nwscript--strip-comments
+                      (thing-at-point 'line t))))))
+
+(defun nwscript--line-at-last-matching-paren (start-pos close-paren)
+  "START-POS CLOSE-PAREN."
+  (save-mark-and-excursion
+    (goto-char start-pos)
+    (search-backward close-paren nil t)
+    (forward-char 1)
+    (backward-sexp)
+    (thing-at-point 'line t)))
+
 (defun nwscript--desired-indentation ()
-  "."
+  "Return desired indentation at current point."
   (let ((cur-line (string-trim-right (nwscript--strip-comments
                                       (thing-at-point 'line t))))
         (prev-line (string-trim-right (nwscript--strip-comments
                                        (nwscript--previous-non-empty-line 1))))
-        (sec-last-line (string-trim-right (nwscript--previous-non-empty-line 2)))
         (indent-len nwscript-indent-offset))
     (cond
-     ;;;; switch statement handling
+     ;;;; if, for, while statements
 
-     ;; handle curly bracket at the end of switch statement
+     ;; one line if, for, while
+     ((and (string-match-p "if\\|while\\|for"
+                           (nwscript--line-at-last-matching-paren (pos-bol) ")"))
+           (not (string-prefix-p "{" cur-line))
+           (not (string-suffix-p "{" prev-line)))
+      (+ (nwscript--space-prefix-len prev-line) indent-len))
+
+     ;; restore indent after one line if, for, while statement
+     ((and (or ())))
+
+     ((and (string-match-p "if\\|while\\|for" prev-line)
+           (string-match-p (regexp-opt nwscript--operators) cur-line))
+      (+ (nwscript--space-prefix-len prev-line) indent-len))
+
+     ((and (string-match-p (regexp-opt nwscript--operators) prev-line)
+           (string-match-p (regexp-opt nwscript--operators) cur-line)
+           (not (string-suffix-p ";" prev-line)))
+      (nwscript--space-prefix-len prev-line))
+
+     ((and (nwscript--match-line-at-last-matching-paren
+            (regexp-opt nwscript--operators) (pos-bol) ")")
+           (string-match-p (regexp-opt nwscript--operators) cur-line))
+      (nwscript--indent-at-last-matching-paren (pos-bol) ")"))
+
+     ;;;; Multi line operators
+
+
+     ;;;; Multi line function handling
+     ((string-suffix-p "(" prev-line)
+      (+ (nwscript--space-prefix-len prev-line) indent-len))
+
+     ((and (string-suffix-p ");" prev-line)
+           (string-suffix-p "}" cur-line))
+      (max (- (nwscript--indent-at-last-matching-paren (pos-eol) ")")
+              indent-len)
+           0))
+
+     ((and (string-match-p ") +{" prev-line)
+           (string-suffix-p "}" cur-line))
+      (nwscript--indent-at-last-matching-paren (pos-eol) ")"))
+
+     ((string-match-p ") +{" prev-line)
+      (+ (nwscript--indent-at-last-matching-paren (pos-bol) ")") indent-len))
+
+     ((or (and (string-suffix-p ")" prev-line)
+               (string-suffix-p "{" cur-line))
+
+          (string-suffix-p ");" prev-line))
+      (nwscript--indent-at-last-matching-paren (pos-eol) ")"))
+
      ((and (string-suffix-p "}" cur-line)
-           (not (save-mark-and-excursion
-                  (search-backward "{"
-                                   (save-mark-and-excursion
-                                     (search-backward "default:" nil t))
-                                   t))))
+           (not (string-suffix-p "}" prev-line))
+           (or (not (nwscript--one-after-another-backward "{" "default:"))))
       (max (- (nwscript--space-prefix-len prev-line)
               (* 2 indent-len))
            0))
 
+     ((string-suffix-p "," prev-line)
+      (cond
+       ((string-match-p "\\b\\([A-Za-z][A-Za-z0-9_]+\(.?*[^)],\\)\\b" prev-line)
+        (+ 1 (save-mark-and-excursion
+               (forward-line -1)
+               (end-of-line)
+               (- (search-backward "(" (pos-bol) t)
+                  (pos-bol)))))
+       ((string-suffix-p ")," prev-line)
+        (nwscript--indent-at-last-matching-paren (pos-bol) ")"))
+       (t (nwscript--space-prefix-len prev-line))))
+
+     ;;;; switch statement handling
      ((or (string-suffix-p "break;" prev-line)
-          (string-prefix-p "return" (string-trim-left prev-line)))
+          (and (string-prefix-p "return" (string-trim-left prev-line))
+               (nwscript--one-after-another-backward ":" "case ")))
       (max (- (nwscript--space-prefix-len prev-line) indent-len) 0))
 
      ((and (string-suffix-p ":" prev-line)
