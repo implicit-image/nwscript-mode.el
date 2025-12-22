@@ -106,7 +106,7 @@
 (defun nwscript--ensure-compiler ()
   (pcase system-type
     ('gnu/linux (and (executable-find nwscript-compiler-executable)
-                     (if nwscript-compile-use-wine
+                     (if nwscript-compiler-use-wine
                          (executable-find "wine")
                        t)))
     (_ (user-error "platforms other than gnu/linux are not supported at his moment"))))
