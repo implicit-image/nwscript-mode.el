@@ -17,10 +17,9 @@
 
 ;;; Code:
 (require 'subr-x)
+(require 'ffap)
 (require 'cl-lib)
-
-(defvar nwscript-include-dirs '("include" "Scripts" "Scripts_X1" "Scripts_X2")
-  "Directories in which to search for include files.")
+(require 'nwscript-flymake)
 
 (defcustom nwscript-include-root 'project
   "Directory from which to search for `nwscript-include-dirs'. If it is the \
@@ -34,11 +33,24 @@ the directory."
                  function
                  string))
 
+(defcustom nwscript-enable-flymake t
+  "Non-nil if `nwscript-mode' should configure `flymake'." )
+
+(defcustom nwscript-get-includes-function #'nwscript-get-includes "Function to get a list of includes fora compile command. It should return a list of absolute paths to include directories." )
+
+
+(defvar nwscript-include-dirs '("include" "Scripts" "Scripts_X1" "Scripts_X2")
+  "Directories in which to search for include files.")
+
+
 (defvar-local nwscript--local-include-root nil
   "Local directory from which to search for `nwscript-include-dirs'.")
 
 (defvar-local nwscript--local-include-dirs nil
   "Local directories to search for include files.")
+
+(defvar nwscript--beginning-of-defun-regex "^\\bstruct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)"
+  "TODO")
 
 (defvar nwscript-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -51,32 +63,28 @@ the directory."
 (defvar nwscript-indent-offset 4
   "Indent offset for `nwscript-mode'.")
 
-(defun nwscript--find-root ()
-  "Find root for finding include files."
-  (cond ((eq nwscript-include-root 'project)
-         (require 'project)
-         (project-root (project-current)))
-        ((eq nwscript-include-root 'projectile)
-         (when (bound-and-true-p projectile-mode)
-           (projectile-project-root)))
-        ((functionp nwscript-include-root) (funcall nwscript-include-root))
-        ((stringp nwscript-include-root) nscript-include-root)
-        (t default-directory)))
+(defvar nwscript--compilation-error-regexp-alist
+  (list 'nwscript
+        "\\(\\b[A-Za-z0-9_-]\.nss\\b\\)\\(\\): Error"
+        1 ;; file
+        2 ;;line
+        3 ;; column
+        2 ;;type
+        "" ;hyperlink
+        ;; highlights
+        '()))
 
-(defun nwscript--find-include-dirs ()
-  "Return local include dirs."
-  (let* ((dirs (cl-remove-if-not (lambda (inc-dir)
-                                   (file-directory-p (expand-file-name inc-dir nwscript--local-include-root)))
-                                 nwscript-include-dirs))
-         (dirs (if (null dirs)
-                   (list ".")
-                 dirs)))
-    (mapcar (lambda (dir)
-              (expand-file-name dir nwscript--local-include-root))
-            dirs)))
+(defvar nwscript--compilation-warning-regexp-alist
+  (list 'nwscript ""
+        1 ;; file
+        2 ;; line
+        3 ;; column
+        4 ;; type
+        "" ;; hyperlink
+        ;; highlights
+        ""))
 
-
-(defun nwscript-setup-completion ()
+(defun nwscript-completion-setup ()
   "Setup local include root dir, include source dirs and `completion-at\
 -point-functions'."
   (interactive)
@@ -98,6 +106,11 @@ the directory."
 
   (setq-local nwscript--local-include-root (nwscript--find-root)
               nwscript--local-include-dirs (nwscript--find-include-dirs)))
+
+(defun nwscript--which-func-imenu-joiner-function (args)
+  "Joiner function for imenu entries in `which-func-mode'. Return\
+ARGS interspersed with separators."
+  (car (last args)))
 
 ;;;; Completion at point function
 (defun nwscript-completion-at-point ()
@@ -127,7 +140,7 @@ the directory."
 (defvar nwscript--operators '("==" "!=" "<" ">" ">=" "<=" "&&" "||" "%" "%=" "+" "+=" "-" "-=" "*" "*=" "/" "/=" "--" "++" "|" "|=" "&" "&=" "~" "~=" "^" "^=" ">>" ">>=" "<<" "<<=" ">>>" ">>>=")
   "List of Nwscript operators.")
 
-(defvar nwscript--keywords '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default" "break")
+(defvar nwscript--keywords '("for" "while" "do" "if" "else" "struct" "return" "const" "switch" "case" "default" "break" "continue")
   "List of Nwscript keywords.")
 
 (defvar nwscript--directive-regex "\\(\#include\\|\#define\\)"
@@ -159,12 +172,7 @@ the directory."
    `(,(regexp-opt nwscript--types 'symbols) . 'font-lock-type-face)
    `(,nwscript--number-regex . 'font-lock-number-face)
    ;; function declarations
-   `(,nwscript--function-declaration-regex . (2 font-lock-function-name-face))
-   ;; function calls
-   ;; TODO: figure out how to find function calls
-   ;; `("\\b\\([A-Za-z]+[A-Za-z_0-9]*\\b\\)\\((\\)" . (0 font-lock-function-call-face))
-   ;; `(,(regexp-opt (nwscript-operators) 'symbols) . font-lock-negation-char-face)
-   ))
+   `(,nwscript--function-declaration-regex . (2 font-lock-function-name-face))))
 
 (defun nwscript--space-prefix-len (line)
   "Get the length of indent on LINE."
@@ -242,57 +250,31 @@ the directory."
                                        (nwscript--previous-non-empty-line 1))))
         (indent-len nwscript-indent-offset))
     (cond
-     ;;;; if, for, while statements
-
-     ;; one line if, for, while
-     ((and (string-match-p "if\\|while\\|for"
-                           (nwscript--line-at-last-matching-paren (pos-bol) ")"))
-           (not (string-prefix-p "{" cur-line))
-           (not (string-suffix-p "{" prev-line)))
-      (+ (nwscript--space-prefix-len prev-line) indent-len))
-
-     ;; restore indent after one line if, for, while statement
-     ((and (or ())))
-
-     ((and (string-match-p "if\\|while\\|for" prev-line)
-           (string-match-p (regexp-opt nwscript--operators) cur-line))
-      (+ (nwscript--space-prefix-len prev-line) indent-len))
-
-     ((and (string-match-p (regexp-opt nwscript--operators) prev-line)
-           (string-match-p (regexp-opt nwscript--operators) cur-line)
-           (not (string-suffix-p ";" prev-line)))
-      (nwscript--space-prefix-len prev-line))
-
-     ((and (nwscript--match-line-at-last-matching-paren
-            (regexp-opt nwscript--operators) (pos-bol) ")")
-           (string-match-p (regexp-opt nwscript--operators) cur-line))
-      (nwscript--indent-at-last-matching-paren (pos-bol) ")"))
-
-     ;;;; Multi line operators
-
-
      ;;;; Multi line function handling
      ((string-suffix-p "(" prev-line)
+      (message "Multi line start")
       (+ (nwscript--space-prefix-len prev-line) indent-len))
 
      ((and (string-suffix-p ");" prev-line)
            (string-suffix-p "}" cur-line))
+      (message "after multi line if/for/while condition brace indent")
       (max (- (nwscript--indent-at-last-matching-paren (pos-eol) ")")
               indent-len)
            0))
 
      ((and (string-match-p ") +{" prev-line)
            (string-suffix-p "}" cur-line))
+      (message "after multi line if/for/while brace")
       (nwscript--indent-at-last-matching-paren (pos-eol) ")"))
 
      ((string-match-p ") +{" prev-line)
+      (message "indent after same line ) {")
       (+ (nwscript--indent-at-last-matching-paren (pos-bol) ")") indent-len))
 
      ((or (and (string-suffix-p ")" prev-line)
                (string-suffix-p "{" cur-line))
-
           (string-suffix-p ");" prev-line))
-      (nwscript--indent-at-last-matching-paren (pos-eol) ")"))
+      (nwscript--indent-at-last-matching-paren (pos-bol) ")"))
 
      ((and (string-suffix-p "}" cur-line)
            (not (string-suffix-p "}" prev-line))
@@ -356,41 +338,63 @@ the directory."
       (indent-line-to desired-indentation)
       (forward-char n))))
 
+(defun nwscript--beginning-of-defun (&optional arg)
+  (interactive "^p")
+  (if (> 0 arg)
+      (progn
+        (forward-sexp)))
+  (re-search-backward nwscript--beginning-of-defun-regex nil 'move arg)
+  (beginning-of-line))
+
 (define-derived-mode nwscript-mode prog-mode "NWScript"
   "Simple major mode for editing Neverwinter Script files."
   :syntax-table nwscript-mode-syntax-table
   ;; local variables
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords)
-              indent-line-function 'nwscript-indent-line
+              defun-prompt-regexp "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
+              beginning-of-defun-function 'nwscript--beginning-of-defun
               comment-start "// "
+              ;; which-func
+              which-func-imenu-joiner-function 'nwscript--which-func-imenu-joiner-function
+              indent-line-function 'nwscript-indent-line
               ;; dabbrev
               dabbrev-case-fold-search nil
+              dabbrev-upcase-means-case-search nil
               dabbrev-check-other-buffers t
               dabbrev-check-all-buffers nil
+              ;; outline minor mode
+              outline-regexp "\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\|[ \t]*if +(\\|[ \t]*for +(\\|[ \t]*while +(\\\|[ \t]*switch +(\\|[ \t]*case +[A-Za-z0-9]+:\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)"
+              outline-heading-end-regexp ";\n\\|,\n\\|:\n"
               ;; imenu
               imenu-max-item-length 150
               imenu-flatten t
               imenu-generic-expression
-              `(("Function declarations" "\\b\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\);" 1)
-                ("Function definitions" "\\b\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)[^;]" 1)
-                ("Constants" "\\b\\(const[ \t]+\\(int\\|float\\|string\\)[ \t]+[A-Z0-9_]+\\)[ \t]+=.*;" 1)
-                ("Structs" "\\b\\(^struct[ \t]+\\([A-Za-z0-9_]+$\\)\\)" 1)))
+              `(("Includes"
+                 "#include[ \t]+\"\\([A-Za-z0-9\_]+\\)\"\n" 1)
+                ("Function declarations"
+                 "\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*\\)\\(([A-Za-z0-9_, \n=]*)\\);" 2)
+                ("Function definitions"
+                 "\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*\\)\\([ \t]*([^{]*)\\)[ \t\n]*{" 2)
+                ("Constants" "\\b\\(const[ \t]+\\(int\\|float\\|string\\)[ \t]+\\)\\([A-Z0-9_]+\\)[ \t]+=.*" 3)
+                ("Structs" "\\b\\(^struct[ \t]+\\)\\([A-Za-z0-9\_]+{*$\\)" 2)))
 
   ;; consult-imenu config
   (when (fboundp 'consult-imenu)
     (require 'consult-imenu)
     (add-to-list 'consult-imenu-config
                  '(nwscript-mode :toplevel "Functions"
-                                 :types ((?f "Function declarations" font-lock-function-name-face)
+                                 :types ((?i "Includes")
+                                         (?f "Function declarations" font-lock-function-name-face)
                                          (?d "Function definitions" font-lock-function-name-face)
                                          (?s "Structs" font-lock-type-face)
                                          (?c "Constants" font-lock-constant-face)))))
-  ;; disable indent tabs mode
-  (when indent-tabs-mode
-    (indent-tabs-mode -1))
 
+  ;; compilation setup
+  ;; (nwscript-setup-compilation-options)
+  ;; flymake setup
+  (when (bound-and-true-p nwscript-enable-flymake)
+    (nwscript-flymake-setup))
   ;; capf setup
-  (nwscript-setup-completion))
-
+  (nwscript-completion-setup))
 
 (provide 'nwscript-mode)
