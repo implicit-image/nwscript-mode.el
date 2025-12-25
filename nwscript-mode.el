@@ -49,7 +49,7 @@ the directory."
 (defvar-local nwscript--local-include-dirs nil
   "Local directories to search for include files.")
 
-(defvar nwscript--beginning-of-defun-regex "^\\bstruct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)"
+(defvar nwscript--beginning-of-defun-regex "^\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)"
   "TODO")
 
 (defvar nwscript-mode-syntax-table
@@ -155,7 +155,7 @@ ARGS interspersed with separators."
 (defvar nwscript--number-regex "\\(\\b[0-9]+[0-9\.]*f*\\b\\)"
   "Regex for finding numbers.")
 
-(defvar nwscript--function-declaration-regex  "\\b\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)"
+(defvar nwscript--function-declaration-regex  "^\\(struct [A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*\\).*$"
   "Regex for function declarations and definitions.")
 
 (defun nwscript-font-lock-keywords ()
@@ -341,17 +341,17 @@ ARGS interspersed with separators."
 (defun nwscript--beginning-of-defun (&optional arg)
   (interactive "^p")
   (if (> 0 arg)
-      (progn
-        (forward-sexp)))
-  (re-search-backward nwscript--beginning-of-defun-regex nil 'move arg)
-  (beginning-of-line))
+      (let ((beginning-of-defun-function nil))
+        (progn (beginning-of-defun-raw arg)))
+    (re-search-backward nwscript--beginning-of-defun-regex nil 'move arg)
+    (beginning-of-line)))
 
 (define-derived-mode nwscript-mode prog-mode "NWScript"
   "Simple major mode for editing Neverwinter Script files."
   :syntax-table nwscript-mode-syntax-table
   ;; local variables
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords)
-              defun-prompt-regexp "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
+              defun-prompt-regexp "\\b\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
               beginning-of-defun-function 'nwscript--beginning-of-defun
               comment-start "// "
               ;; which-func

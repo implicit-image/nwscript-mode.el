@@ -61,8 +61,9 @@
 (defun nwscript--find-include-dirs ()
   "Return local include dirs."
   (let* ((dirs (cl-remove-if-not (lambda (inc-dir)
-                                   (file-directory-p (expand-file-name
-                                                      inc-dir nwscript--local-include-root)))
+                                   (or (file-name-absolute-p inc-dir)
+                                       (file-directory-p (expand-file-name
+                                                          inc-dir nwscript--local-include-root))))
                                  nwscript-include-dirs))
          (dirs (if (null dirs) '(".") dirs)))
     (mapcar (lambda (dir)
