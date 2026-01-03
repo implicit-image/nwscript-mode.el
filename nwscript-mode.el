@@ -158,6 +158,27 @@ ARGS interspersed with separators."
 (defvar nwscript--function-declaration-regex  "^\\(struct [A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*\\).*$"
   "Regex for function declarations and definitions.")
 
+(defvar nwscript--imenu-include-regex "^#include[ \t]+\"\\([A-Za-z0-9\_]+\\)\"$"
+  "Regex for nwscript `imenu' include entry.")
+
+(defvar nwscript--imenu-function-declaration-regex "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*\\)\\(([^\)]*)\\);$"
+  "Regex for nwscript `imenu' function entry.")
+
+(defvar nwscript--imenu-function-definition-regex "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*\\)\\(([^\)]*)\\)[^;]*$"
+  "Regex for nwscript `imenu' function definition entry.")
+
+(defvar nwscript--imenu-constant-regex "^\\([const]*[ \t]+\\(int\\|float\\|string\\)[ \t]+\\)\\([A-Z0-9_]+\\)[ \t]+=.*;"
+  "Regex for nwscript `imenu' constant variable entry.")
+
+(defvar nwscript--imenu-struct-regex "^\\(^struct[ \t]+\\)\\([A-Za-z0-9\_]+\\)[\t ]*{*$"
+  "Regex for nwscript `imenu' struct entry.")
+
+(defvar nwscript--imenu-define-regex "^#define[ \t]+\\([A-Z_a-z0-9]+\\)[ \t]+.*$"
+  "Regex for nwscript `imenu' define entry.")
+
+(defvar nwscript--imenu-global-variable-regex "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z0-9_]+\\)[ \t]+\=[^()]*;"
+  "Regex for nwscript `imenu' global scope variable entry.")
+
 (defun nwscript-font-lock-keywords ()
   "Font lock keywords for `nwscript-mode'."
   (list
@@ -363,31 +384,35 @@ ARGS interspersed with separators."
               dabbrev-check-other-buffers t
               dabbrev-check-all-buffers nil
               ;; outline minor mode
-              outline-regexp "\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\|[ \t]*if +(\\|[ \t]*for +(\\|[ \t]*while +(\\\|[ \t]*switch +(\\|[ \t]*case +[A-Za-z0-9]+:\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)"
-              outline-heading-end-regexp ";\n\\|,\n\\|:\n"
+              ;; outline-regexp "\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\|[ \t]*if +(\\|[ \t]*for +(\\|[ \t]*while +(\\\|[ \t]*switch +(\\|[ \t]*case +[A-Za-z0-9]+:\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)"
+              ;; outline-heading-end-regexp ";\n\\|,\n\\|:\n"
+              outline-regexp ""
+              outline-heading-end-regexp ""
               ;; imenu
               imenu-max-item-length 150
               imenu-flatten t
               imenu-generic-expression
-              `(("Includes"
-                 "#include[ \t]+\"\\([A-Za-z0-9\_]+\\)\"\n" 1)
-                ("Function declarations"
-                 "\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*\\)\\(([A-Za-z0-9_, \n=]*)\\);" 2)
-                ("Function definitions"
-                 "\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*\\)\\([ \t]*([^{]*)\\)[ \t\n]*{" 2)
-                ("Constants" "\\b\\(const[ \t]+\\(int\\|float\\|string\\)[ \t]+\\)\\([A-Z0-9_]+\\)[ \t]+=.*" 3)
-                ("Structs" "\\b\\(^struct[ \t]+\\)\\([A-Za-z0-9\_]+{*$\\)" 2)))
+              (list
+               `("Includes" ,nwscript--imenu-include-regex 1)
+               `("Function declarations" ,nwscript--imenu-function-declaration-regex 2)
+               `("Function definitions" ,nwscript--imenu-function-definition-regex 2)
+               `("Constants" ,nwscript--imenu-constant-regex 3)
+               `("Structs" ,nwscript--imenu-struct-regex 2)
+               `("Defines" ,nwscript--imenu-define-regex 1)
+               `("Global variables" ,nwscript--imenu-global-variable-regex 2)))
 
   ;; consult-imenu config
   (when (fboundp 'consult-imenu)
     (require 'consult-imenu)
-    (add-to-list 'consult-imenu-config
-                 '(nwscript-mode :toplevel "Functions"
-                                 :types ((?i "Includes")
-                                         (?f "Function declarations" font-lock-function-name-face)
-                                         (?d "Function definitions" font-lock-function-name-face)
-                                         (?s "Structs" font-lock-type-face)
-                                         (?c "Constants" font-lock-constant-face)))))
+    (setf (alist-get 'nwscript-mode consult-imenu-config)
+          '( :toplevel "Functions"
+             :types ((?i "Includes")
+                     (?f "Function declarations" font-lock-function-name-face)
+                     (?g "Global variables" font-lock-constant-face)
+                     (?m "Defines" font-lock-constant-face)
+                     (?d "Function definitions" font-lock-function-name-face)
+                     (?s "Structs" font-lock-type-face)
+                     (?c "Constants" font-lock-constant-face)))))
 
   ;; compilation setup
   ;; (nwscript-setup-compilation-options)
