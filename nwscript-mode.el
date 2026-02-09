@@ -63,27 +63,6 @@ the directory."
 (defvar nwscript-indent-offset 4
   "Indent offset for `nwscript-mode'.")
 
-(defvar nwscript--compilation-error-regexp-alist
-  (list 'nwscript
-        "\\(\\b[A-Za-z0-9_-]\.nss\\b\\)\\(\\): Error"
-        1 ;; file
-        2 ;;line
-        3 ;; column
-        2 ;;type
-        "" ;hyperlink
-        ;; highlights
-        '()))
-
-(defvar nwscript--compilation-warning-regexp-alist
-  (list 'nwscript ""
-        1 ;; file
-        2 ;; line
-        3 ;; column
-        4 ;; type
-        "" ;; hyperlink
-        ;; highlights
-        ""))
-
 (defun nwscript-completion-setup ()
   "Setup local include root dir, include source dirs and `completion-at\
 -point-functions'."
@@ -277,7 +256,7 @@ ARGS interspersed with separators."
       (+ (nwscript--space-prefix-len prev-line) indent-len))
 
      ((and (string-suffix-p ");" prev-line)
-           (string-suffix-p "}" cur-line))
+           (string-prefix-p "}" (string-trim-left cur-line)))
       (message "after multi line if/for/while condition brace indent")
       (max (- (nwscript--indent-at-last-matching-paren (pos-eol) ")")
               indent-len)
@@ -288,7 +267,8 @@ ARGS interspersed with separators."
       (message "after multi line if/for/while brace")
       (nwscript--indent-at-last-matching-paren (pos-eol) ")"))
 
-     ((string-match-p ") +{" prev-line)
+     ((and (string-match-p ") +{" prev-line)
+           (not (string-suffix-p "}" prev-line)))
       (message "indent after same line ) {")
       (+ (nwscript--indent-at-last-matching-paren (pos-bol) ")") indent-len))
 

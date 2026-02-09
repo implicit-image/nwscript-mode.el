@@ -31,12 +31,15 @@
 ;;; Code:
 
 (require 'nwscript-compile)
+(require 'ansi-color)
 
 (defvar-local nwscript--flymake-buffer nil)
 
+(defvar-local nwscript--flymake-process nil)
+
 (defvar-local nwscript--diagnostics nil)
 
-(defvar-local nwscript-flymake-diagnostics-regex-format "^\\(.*%s\.nss\\) *\(\\([0-9]+\\)\):.*?NSC[0-9]+: \\(.*\\)\$"
+(defvar-local nwscript-flymake-diagnostics-regex-format "^\\(.*%s\.nss\\) *\(\\([0-9]+\\)\):.*?NSC[0-9]+: \\(.*\\)\$"
   "TODO")
 
 (defun nwscript-get-includes ()
@@ -73,44 +76,65 @@
          (cmd (nwscript--get-check-command (list (buffer-file-name source))
                                            (nwscript-get-includes))))
     (message "Checking %s" source-file-name)
-    (save-restriction
-      (widen)
-      (let ((out (eval `(funcall
-                         'process-lines-ignore-status
-                         ,@cmd))))
-        (when (bufferp nwscript--flymake-buffer)
-          (kill-buffer nwscript--flymake-buffer))
-        (setq-local nwscript--flymake-buffer (get-buffer-create
-                                              (format " *nwnsc-flymake[%s]"
-                                                      (buffer-name source))))
-        (with-current-buffer nwscript--flymake-buffer
-          (goto-char (point-min))
-          (save-mark-and-excursion
-            (insert (string-join out "\n")))
-          (cl-loop
-           while (search-forward-regexp
-                  (format nwscript-flymake-diagnostics-regex-format
-                          (file-name-base (buffer-file-name source)))
-                  nil t)
-           for msg = (match-string 3)
-           for (beg . end) = (flymake-diag-region
-                              source
-                              (string-to-number (match-string 2)))
-           for type = (if (string-match ".*Warning.*$" (thing-at-point 'line))
-                          :warning
-                        :error)
-           when (and beg end)
-           collect (flymake-make-diagnostic source beg end type msg)
-           into diags
-           finally (progn (with-current-buffer source
-                            (setq-local nwscript--diagnostics diags))
-                          (message "finished checking %s" source-file-name)
-                          (funcall report-fn diags))))))))
+    (when (and (processp nwscript--flymake-process)
+               (process-live-p nwscript--flymake-process))
+      (kill-process nwscript--flymake-process))
+    (when (buffer-live-p nwscript--flymake-buffer)
+      (with-current-buffer nwscript--flymake-buffer
+        (erase-buffer)))
+    (setq-local nwscript--flymake-process nil)
+    (save-mark-and-excursion
+      (let* ((buf (or (and (bufferp nwscript--flymake-buffer)
+                           (buffer-live-p nwscript--flymake-buffer)
+                           nwscript--flymake-buffer)
+                      (get-buffer-create
+                       (format " *nwnsc-flymake[%s]"
+                               (buffer-name source)))))
+             (proc (apply 'start-process
+                          "nwscript-flymake"
+                          buf
+                          cmd)))
+        (setq-local nwscript--flymake-process proc
+                    nwscript--flymake-buffer buf)
+        (set-process-coding-system nwscript--flymake-process 'utf-8-unix)
+        (set-process-sentinel nwscript--flymake-process
+                              (lambda (process change)
+                                (let ((inhibit-message t))
+                                  (message "sentinel received: %s" change)
+                                  (message "source in sentinel is %S" source))
+                                (when (and (process-buffer process))
+                                  (with-current-buffer (process-buffer process)
+                                    (ansi-color-filter-region (point-min) (point-max))
+                                    (replace-regexp-in-region "" "" (point-min) (point-max))
+                                    (replace-regexp-in-region "\\([^\n]+\\)\n" "\\1" (point-min) (point-max))
+                                    (goto-char (point-min))
+                                    (cl-loop
+                                     while (search-forward-regexp
+                                            (format nwscript-flymake-diagnostics-regex-format
+                                                    (file-name-base (buffer-file-name source)))
+                                            nil t)
+                                     for msg = (match-string 3)
+                                     for (beg . end) = (flymake-diag-region
+                                                        (get-buffer (or (match-string 1)
+                                                                        source))
+                                                        (string-to-number (match-string 2)))
+                                     for type = (if (string-match ".*Warning.*$" (thing-at-point 'line))
+                                                    :warning
+                                                  :error)
+                                     when (and beg end)
+                                     collect (flymake-make-diagnostic (get-buffer (or (match-string 1)
+                                                                                      source))
+                                                                      beg end type msg)
+                                     into diags
+                                     finally (progn (with-current-buffer source
+                                                      (setq-local nwscript--diagnostics diags))
+                                                    (message "finished checking %s" source-file-name)
+                                                    (funcall report-fn diags)))))))))))
 
 (defun nwscript-flymake-setup ()
   "Setup flymake backend."
   (interactive)
-  ;; check flymake only on save
+  ;; check flymake only on save since we are compiling the file on disk
   (setq-local flymake-no-changes-timeout nil
               flymake-start-on-save-buffer t)
   ;; add new backend to local diagnostic functions

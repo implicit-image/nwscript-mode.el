@@ -44,6 +44,27 @@
 
 (defcustom nwscript-compile-check-options '("-q") "doc" )
 
+(defvar nwscript--compilation-error-regexp-alist
+  (list 'nwscript
+        "\\(\\b[A-Za-z0-9_-]\.nss\\b\\)\\(\\): Error"
+        1 ;; file
+        2 ;;line
+        3 ;; column
+        2 ;;type
+        "" ;hyperlink
+        ;; highlights
+        '()))
+
+(defvar nwscript--compilation-warning-regexp-alist
+  (list 'nwscript ""
+        1 ;; file
+        2 ;; line
+        3 ;; column
+        4 ;; type
+        "" ;; hyperlink
+        ;; highlights
+        ""))
+
 (defun nwscript--find-root ()
   "Find root for finding include files."
   (cond ((eq nwscript-include-root 'project)
@@ -88,12 +109,15 @@
         (push (ffap-all-subdirs dir 5) includes)))))
 
 (defun nwscript--temp-outfile (infile)
-  (expand-file-name (replace-regexp-in-string "\.nss" "\.ncs"
-                                              (file-name-nondirectory infile))
-                    (temporary-file-directory)))
+  (tmp (expand-file-name (replace-regexp-in-string "\.nss" "\.ncs"
+                                                   (file-name-nondirectory (buffer-file-name)))
+                         (temporary-file-directory))))
 
 (defun nwscript--temp-outdir ()
-  (expand-file-name "nwnsc-compile" (temporary-file-directory)))
+  (let ((dir (expand-file-name "nwnsc-compile" (temporary-file-directory))))
+    (when (not (file-exists-p dir))
+      (make-directory dir))
+    dir))
 
 (defun nwscript--get-check-command (infiles includes)
   `(,@(list (when nwscript-compiler-use-wine (executable-find "wine"))
