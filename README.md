@@ -4,7 +4,7 @@ Emacs major mode for editing Bioware's [NWScript](https://nwnlexicon.com/index.p
 # installation
 
 ### package.el
-From emacs 30.2, you can do:
+For emacs > 30.2, you can do:
 ```elisp
 (use-package nwscript-mode
   :vc ( :url "https://github.com/implicit-image/nwscript-mode.el"
