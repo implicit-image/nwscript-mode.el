@@ -20,6 +20,7 @@
 (require 'ffap)
 (require 'cl-lib)
 (require 'nwscript-flymake)
+(require 'nwscript-tempel)
 
 (defcustom nwscript-include-root 'project
   "Directory from which to search for `nwscript-include-dirs'. If it is the \
@@ -49,7 +50,7 @@ the directory."
 (defvar-local nwscript--local-include-dirs nil
   "Local directories to search for include files.")
 
-(defvar nwscript--beginning-of-defun-regex "^\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\) +\\([A-Za-z]+[A-Za-z_0-9]*\\) *\\((\\)"
+(defvar nwscript--beginning-of-defun-regex "^\\(struct \\b[A-Za-z0-9_]+\\b\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
   "TODO")
 
 (defvar nwscript-mode-syntax-table
@@ -146,7 +147,7 @@ ARGS interspersed with separators."
 (defvar nwscript--imenu-function-definition-regex "^\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*\\)\\(([^\)]*)\\)[^;]*$"
   "Regex for nwscript `imenu' function definition entry.")
 
-(defvar nwscript--imenu-constant-regex "^\\([const]*[ \t]+\\(int\\|float\\|string\\)[ \t]+\\)\\([A-Z0-9_]+\\)[ \t]+=.*;"
+(defvar nwscript--imenu-constant-regex "^\\(const[ \t]*\\(int\\|float\\|string\\)[ \t]+\\)\\([A-Za-z0-9_]+\\)[ \t]+=.*;$"
   "Regex for nwscript `imenu' constant variable entry.")
 
 (defvar nwscript--imenu-struct-regex "^\\(^struct[ \t]+\\)\\([A-Za-z0-9\_]+\\)[\t ]*{*$"
@@ -341,19 +342,24 @@ ARGS interspersed with separators."
 
 (defun nwscript--beginning-of-defun (&optional arg)
   (interactive "^p")
-  (if (> 0 arg)
-      (let ((beginning-of-defun-function nil))
-        (progn (beginning-of-defun-raw arg)))
-    (re-search-backward nwscript--beginning-of-defun-regex nil 'move arg)
-    (beginning-of-line)))
+  (when-let*  ((found (re-search-backward nwscript--beginning-of-defun-regex nil t arg)))
+    (goto-char (match-beginning 0))))
+
+(defun nwscript--end-of-defun (&optional arg)
+  (interactive "p")
+  ;; ';' needed to catch struct definitions
+  (when-let* ((found (re-search-forward "^};*" nil t arg)))
+    (goto-char (match-end 0))))
 
 (define-derived-mode nwscript-mode prog-mode "NWScript"
   "Simple major mode for editing Neverwinter Script files."
   :syntax-table nwscript-mode-syntax-table
   ;; local variables
   (setq-local font-lock-defaults '(nwscript-font-lock-keywords)
-              defun-prompt-regexp "\\b\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
+              ;; defun-prompt-regexp "\\b\\(struct +[A-Za-z0-9\_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\)"
+              defun-prompt-regexp nil
               beginning-of-defun-function 'nwscript--beginning-of-defun
+              end-of-defun-function 'nwscript--end-of-defun
               comment-start "// "
               ;; which-func
               which-func-imenu-joiner-function 'nwscript--which-func-imenu-joiner-function
@@ -401,5 +407,8 @@ ARGS interspersed with separators."
     (nwscript-flymake-setup))
   ;; capf setup
   (nwscript-completion-setup))
+
+(when (fboundp 'tempel-expand)
+  (nwscript-tempel-setup))
 
 (provide 'nwscript-mode)
