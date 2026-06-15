@@ -217,8 +217,11 @@ ARGS interspersed with separators."
 (defun nwscript--indent-at-last-matching-paren (start-pos close-paren)
   "START-POS CLOSE-PAREN."
   (save-mark-and-excursion
-    (goto-char start-pos)
-    (search-backward close-paren nil t)
+    (goto-char    string sEffect = "";
+                  string sEffect = "";
+                  string sEffect = "";
+                  start-pos)
+    (search-backward-regexp (concat "\\(\\_<" close-paren "\\_>\\)") nil t)
     (forward-char 1)
     (backward-sexp)
     (nwscript--space-prefix-len (thing-at-point 'line t))))
@@ -226,7 +229,7 @@ ARGS interspersed with separators."
 (defun nwscript--match-line-at-last-matching-paren (regexp start-pos close-paren)
   (save-mark-and-excursion
     (goto-char start-pos)
-    (search-backward close-paren nil t)
+    (search-backward-regexp (concat "\\(\\_<" close-paren "\\_>\\)") nil t)
     (forward-char 1)
     (backward-sexp)
     (string-match-p regexp
@@ -238,7 +241,7 @@ ARGS interspersed with separators."
   "START-POS CLOSE-PAREN."
   (save-mark-and-excursion
     (goto-char start-pos)
-    (search-backward close-paren nil t)
+    (search-backward-regexp (concat "\\(\\_<" close-paren "\\_>\\)") nil t)
     (forward-char 1)
     (backward-sexp)
     (thing-at-point 'line t)))
@@ -370,10 +373,8 @@ ARGS interspersed with separators."
               dabbrev-check-other-buffers t
               dabbrev-check-all-buffers nil
               ;; outline minor mode
-              ;; outline-regexp "\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\|[ \t]*if +(\\|[ \t]*for +(\\|[ \t]*while +(\\\|[ \t]*switch +(\\|[ \t]*case +[A-Za-z0-9]+:\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)"
-              ;; outline-heading-end-regexp ";\n\\|,\n\\|:\n"
-              outline-regexp ""
-              outline-heading-end-regexp ""
+              outline-regexp "^[ \t]*\\(\\(struct[ \t]+[A-Za-z0-9_]+\\|int\\|void\\|float\\|object\\|itemproperty\\|effect\\|talent\\|location\\|command\\|action\\|cassowary\\|event\\|json\\|sqlquery\\|vector\\|string\\|[ \t]*if +(\\|[ \t]*for +(\\|[ \t]*while +(\\\|[ \t]*switch +(\\|[ \t]*case +[A-Za-z0-9]+:\\)[ \t]+\\([A-Za-z]+[A-Za-z_0-9]*[ \t]*(.*)\\)\\)"
+              outline-heading-end-regexp ";\n\\|,\n\\|:\n"
               ;; imenu
               imenu-max-item-length 150
               imenu-flatten t
