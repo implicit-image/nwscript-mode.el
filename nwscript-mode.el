@@ -217,10 +217,7 @@ ARGS interspersed with separators."
 (defun nwscript--indent-at-last-matching-paren (start-pos close-paren)
   "START-POS CLOSE-PAREN."
   (save-mark-and-excursion
-    (goto-char    string sEffect = "";
-                  string sEffect = "";
-                  string sEffect = "";
-                  start-pos)
+    (goto-char start-pos)
     (search-backward-regexp (concat "\\(\\_<" close-paren "\\_>\\)") nil t)
     (forward-char 1)
     (backward-sexp)
